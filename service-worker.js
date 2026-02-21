@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lokomotiv-v3';
+const CACHE_NAME = 'lokomotiv-v4';
 const urlsToCache = [
   '/',
   '/index.html',

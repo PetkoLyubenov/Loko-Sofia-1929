@@ -783,6 +783,8 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === id));
         document.querySelectorAll('.desktop-nav button').forEach(b => b.classList.toggle('active', b.dataset.page === id));
         window.scrollTo({top: 0, behavior: 'instant'});
+        // Динамично зареждане при смяна на таб
+        if (typeof _pageLoad === 'function') _pageLoad(id);
     }
 
     // Countdown – динамично от API
@@ -1172,7 +1174,8 @@ async function loadTable() {
     try {
         const r = await fetch(LOKO_API + '/league/standings', { signal: AbortSignal.timeout(8000) });
         if (r.ok) data = await r.json();
-    } catch(e) { console.warn('Table API fail', e); }
+        else console.warn('Table API HTTP error:', r.status);
+    } catch(e) { console.warn('Table API fail:', e.message, e); }
 
     loading.style.display = 'none';
     if (!data || !data.standings) { error.style.display = 'block'; return; }
@@ -1185,7 +1188,8 @@ async function loadTable() {
     data.standings.forEach(row => {
         const name = row.team?.name || '';
         const isLoko = LOKO_NAMES.some(n => name.toLowerCase().includes(n));
-        const gd = row.goal_difference != null ? (row.goal_difference > 0 ? '+' : '') + row.goal_difference : (row.goals_for != null ? (row.goals_for - row.goals_against > 0 ? '+' : '') + (row.goals_for - row.goals_against) : '-');
+        const gdVal = row.goal_difference ?? (row.goals_for != null && row.goals_against != null ? row.goals_for - row.goals_against : null);
+        const gd = gdVal != null ? (gdVal > 0 ? '+' : '') + gdVal : '-';
         html += `<tr${isLoko?' class="loko"':''}><td>${row.position}</td><td>${isLoko?'🔴 ':''}${name}</td><td>${row.played}</td><td>${row.wins}</td><td>${row.draws}</td><td>${row.losses}</td><td>${row.goals_for??'-'}</td><td>${row.goals_against??'-'}</td><td>${gd}</td><td><strong>${row.points}</strong></td></tr>`;
     });
 
@@ -1232,10 +1236,7 @@ function getPostCategory(post) {
     return '';
 }
 
-// Зареждане при отваряне на страницата с новини
-const origShowPage = showPage;
-showPage = function(id) {
-    origShowPage(id);
+function _pageLoad(id) {
     if (id === 'news') {
         if (document.getElementById('news-container').children.length === 0) loadNews();
         startNewsAutoRefresh();
@@ -1247,10 +1248,13 @@ showPage = function(id) {
     if (id === 'team' && document.getElementById('team-container').children.length === 0) loadTeam();
     if (id === 'season' && document.getElementById('season-container').children.length === 0) loadSeason();
     if (id === 'table' && document.getElementById('table-container').children.length === 0) loadTable();
-};
+}
 
-// Ако новини е отворена по подразбиране
-if (document.querySelector('#news.active')) { loadNews(); }
+// Зареди активната страница при старт
+(function() {
+    const active = document.querySelector('.page.active');
+    if (active) _pageLoad(active.id);
+})();
 </script>
 
 
